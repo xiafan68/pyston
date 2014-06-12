@@ -62,10 +62,31 @@ void acquireGLRead();
 void releaseGLRead();
 void acquireGLWrite();
 void releaseGLWrite();
+void allowGLReadPreemption();
 // Note: promoteGL is free to drop the lock and then reacquire
 void promoteGL();
 void demoteGL();
 
+
+
+#define MAKE_REGION(name, start, end)                                                                                  \
+    class name {                                                                                                       \
+    public:                                                                                                            \
+        name() { start(); }                                                                                            \
+        ~name() { end(); }                                                                                             \
+    };
+
+MAKE_REGION(GLReadRegion, acquireGLRead, releaseGLRead);
+MAKE_REGION(GLPromoteRegion, promoteGL, demoteGL);
+// MAKE_REGION(GLReadReleaseRegion, releaseGLRead, acquireGLRead);
+// MAKE_REGION(GLWriteReleaseRegion, releaseGLWrite, acquireGLWrite);
+#undef MAKE_REGION
+
+class GLAllowThreadsReadRegion {
+public:
+    GLAllowThreadsReadRegion();
+    ~GLAllowThreadsReadRegion();
+};
 
 
 #if THREADING_USE_GIL
@@ -81,18 +102,6 @@ inline void demoteGL() {
 }
 #endif
 
-#define MAKE_REGION(name, start, end)                                                                                  \
-    class name {                                                                                                       \
-    public:                                                                                                            \
-        name() { start(); }                                                                                            \
-        ~name() { end(); }                                                                                             \
-    };
-
-MAKE_REGION(GLReadRegion, acquireGLRead, releaseGLRead);
-MAKE_REGION(GLPromoteRegion, promoteGL, demoteGL);
-MAKE_REGION(GLReadReleaseRegion, releaseGLRead, acquireGLRead);
-MAKE_REGION(GLWriteReleaseRegion, releaseGLWrite, acquireGLWrite);
-#undef MAKE_REGION
 
 } // namespace threading
 } // namespace pyston

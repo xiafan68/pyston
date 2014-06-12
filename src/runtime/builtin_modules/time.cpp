@@ -14,6 +14,7 @@
 
 #include <cmath>
 #include <ctime>
+#include <err.h>
 #include <sys/time.h>
 
 #include "codegen/compvars.h"
@@ -51,12 +52,13 @@ Box* timeSleep(Box* arg) {
     req.tv_sec = (int)(fullsecs + 0.01);
     req.tv_nsec = (int)(nanosecs * 1000000000);
 
-    int code;
     {
-        threading::GLReadReleaseRegion _allow_threads;
-        code = nanosleep(&req, NULL);
+        threading::GLAllowThreadsReadRegion _allow_threads;
+        int code = nanosleep(&req, NULL);
+
+        if (code)
+            err(1, NULL);
     }
-    RELEASE_ASSERT(code == 0, "%d", code);
 
     return None;
 }
