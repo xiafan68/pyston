@@ -34,7 +34,7 @@ namespace gc {
 
 // extern unsigned numAllocs;
 //#define ALLOCS_PER_COLLECTION 1000
-extern unsigned bytesAllocatedSinceCollection;
+unsigned bytesAllocatedSinceCollection;
 #define ALLOCBYTES_PER_COLLECTION 2000000
 
 void _collectIfNeeded(size_t bytes) {
@@ -97,6 +97,8 @@ struct LargeObj {
 void* Heap::allocLarge(size_t size) {
     _collectIfNeeded(size);
 
+    LOCK_REGION(lock);
+
     size_t total_size = size + sizeof(LargeObj);
     total_size = (total_size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
     LargeObj* rtn = (LargeObj*)large_arena.doMmap(total_size);
@@ -145,8 +147,22 @@ static Block* alloc_block(uint64_t size, Block** prev) {
     return rtn;
 }
 
+Heap::ThreadBlockCache::~ThreadBlockCache() {
+    LOCK_REGION(heap->lock);
+
+    for (int i = 0; i < NUM_BUCKETS; i++) {
+        if (cache_heads[i] == NULL)
+            continue;
+        assert(0);
+    }
+}
+
 void* Heap::allocSmall(size_t rounded_size, Block** prev, Block** full_head) {
     _collectIfNeeded(rounded_size);
+
+    ThreadBlockCache* cache = thread_caches.get();
+
+    LOCK_REGION(lock);
 
     Block* cur = *prev;
     assert(!cur || prev == cur->prev);

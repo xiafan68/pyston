@@ -20,6 +20,9 @@
 #include <ucontext.h>
 #include <vector>
 
+#include "core/common.h"
+#include "core/thread_utils.h"
+
 namespace pyston {
 class Box;
 
@@ -54,9 +57,27 @@ std::vector<ThreadState> getAllThreadStates();
 // be the highest address).
 void* getStackBottom();
 
+#ifndef THREADING_USE_GIL
 #define THREADING_USE_GIL 1
 #define THREADING_USE_GRWL 0
+#endif
 #define THREADING_SAFE_DATASTRUCTURES THREADING_USE_GRWL
+
+#if THREADING_SAFE_DATASTRUCTURES
+#define DS_DEFINE_MUTEX(name) pyston::threading::PthreadFastMutex name
+
+#define DS_DECLARE_RWLOCK(name) extern pyston::threading::PthreadRWLock name
+#define DS_DEFINE_RWLOCK(name) pyston::threading::PthreadRWLock name
+
+#define DS_DEFINE_SPINLOCK(name) pyston::threading::PthreadSpinLock name
+#else
+#define DS_DEFINE_MUTEX(name) pyston::threading::NopLock name
+
+#define DS_DECLARE_RWLOCK(name) extern pyston::threading::NopLock name
+#define DS_DEFINE_RWLOCK(name) pyston::threading::NopLock name
+
+#define DS_DEFINE_SPINLOCK(name) pyston::threading::NopLock name
+#endif
 
 void acquireGLRead();
 void releaseGLRead();
@@ -99,6 +120,23 @@ inline void releaseGLRead() {
 inline void promoteGL() {
 }
 inline void demoteGL() {
+}
+#endif
+
+#if !THREADING_USE_GIL && !THREADING_USE_GRWL
+inline void acquireGLRead() {
+}
+inline void releaseGLRead() {
+}
+inline void acquireGLWrite() {
+}
+inline void releaseGLWrite() {
+}
+inline void promoteGL() {
+}
+inline void demoteGL() {
+}
+inline void allowGLReadPreemption() {
 }
 #endif
 

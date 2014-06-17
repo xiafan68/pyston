@@ -18,6 +18,7 @@
 #include <cstdint>
 
 #include "core/common.h"
+#include "core/threading.h"
 
 namespace pyston {
 namespace gc {
@@ -82,7 +83,23 @@ private:
     void* allocSmall(size_t rounded_size, Block** head, Block** full_head);
     void* allocLarge(size_t bytes);
 
+    // DS_DEFINE_MUTEX(lock);
+    DS_DEFINE_SPINLOCK(lock);
+
+    struct ThreadBlockCache {
+        Heap* heap;
+        Block* cache_heads[NUM_BUCKETS];
+
+        ThreadBlockCache(Heap* heap) : heap(heap) { memset(cache_heads, 0, sizeof(cache_heads)); }
+        ~ThreadBlockCache();
+    };
+    friend class ThreadBlockCache;
+    // TODO only use thread caches if we're in GRWL mode?
+    threading::PerThreadSet<ThreadBlockCache, Heap*> thread_caches;
+
 public:
+    Heap() : thread_caches(this) {}
+
     void* realloc(void* ptr, size_t bytes);
 
     void* alloc(size_t bytes) {
