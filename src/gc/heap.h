@@ -31,7 +31,7 @@ inline GCObjectHeader* headerFromObject(void* obj) {
 #endif
 }
 
-#define BLOCK_SIZE (4*4096)
+#define BLOCK_SIZE (4 * 4096)
 #define ATOM_SIZE 16
 static_assert(BLOCK_SIZE % ATOM_SIZE == 0, "");
 #define ATOMS_PER_BLOCK (BLOCK_SIZE / ATOM_SIZE)
@@ -88,9 +88,13 @@ private:
 
     struct ThreadBlockCache {
         Heap* heap;
-        Block* cache_heads[NUM_BUCKETS];
+        Block* cache_free_heads[NUM_BUCKETS];
+        Block* cache_full_heads[NUM_BUCKETS];
 
-        ThreadBlockCache(Heap* heap) : heap(heap) { memset(cache_heads, 0, sizeof(cache_heads)); }
+        ThreadBlockCache(Heap* heap) : heap(heap) {
+            memset(cache_free_heads, 0, sizeof(cache_free_heads));
+            memset(cache_full_heads, 0, sizeof(cache_full_heads));
+        }
         ~ThreadBlockCache();
     };
     friend class ThreadBlockCache;
