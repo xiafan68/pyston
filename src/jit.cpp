@@ -87,6 +87,9 @@ int main(int argc, char** argv) {
 
     const char* fn = NULL;
 
+    threading::registerMainThread();
+    threading::GLReadRegion _glock;
+
     {
         Timer _t("for initCodegen");
         initCodegen();
@@ -107,9 +110,6 @@ int main(int argc, char** argv) {
     }
 
     // end of argument parsing
-
-    threading::registerMainThread();
-    threading::GLReadRegion _glock;
 
     _t.split("to run");
     if (fn != NULL) {
@@ -222,10 +222,19 @@ int main(int argc, char** argv) {
 
                 if (m->body.size() > 0 && m->body[0]->type == AST_TYPE::Expr) {
                     AST_Expr* e = ast_cast<AST_Expr>(m->body[0]);
+                    AST_Call* c = new AST_Call();
+                    AST_Name* r = new AST_Name();
+                    r->id = "repr";
+                    r->ctx_type = AST_TYPE::Load;
+                    c->func = r;
+                    c->starargs = NULL;
+                    c->kwargs = NULL;
+                    c->args.push_back(e->value);
+
                     AST_Print* p = new AST_Print();
                     p->dest = NULL;
                     p->nl = true;
-                    p->values.push_back(e->value);
+                    p->values.push_back(c);
                     m->body[0] = p;
                 }
 
